@@ -1,0 +1,130 @@
+import streamlit as st
+import pandas as pd
+
+# Mock GPT-4 API response function
+def mock_gpt_api(prompt, step):
+    responses = {
+        "Step 1": {
+            "Mission Objectives": [
+                "Neutralize Red Land's mechanized advances.",
+                "Maintain territorial integrity.",
+                "Ensure air superiority."
+            ],
+            "Constraints": [
+                "Avoid escalation into neutral territories.",
+                "Minimize civilian casualties."
+            ],
+            "Assumptions": [
+                "Red Land will prioritize mechanized thrusts.",
+                "Air superiority can be achieved within 48 hours."
+            ],
+            "Desired End State": [
+                "Blue Land retains full territorial integrity.",
+                "Red Land's operational sustainment capabilities are degraded."
+            ]
+        },
+        "Step 2": {
+            "Environmental Analysis": [
+                "Political: International observers support Blue Land's actions.",
+                "Geographic: Semi-arid plains with key chokepoints.",
+                "Infrastructure: Logistics hubs critical for sustainment."
+            ],
+            "Operational Tasks": [
+                "Specified: Secure chokepoints and logistics hubs.",
+                "Implied: Protect communication networks."
+            ],
+            "AO/AI": [
+                "AO: Northern border and adjacent urban centers.",
+                "AI: Red Land's logistics and ISR nodes."
+            ]
+        },
+        "Step 3": {
+            "Most Likely ECOA": [
+                "Mechanized thrust supported by artillery and hybrid operations."
+            ],
+            "Most Dangerous ECOA": [
+                "Preemptive air and artillery strikes on logistics hubs."
+            ],
+            "COG Analysis": [
+                "Critical Capabilities: Mechanized forces, ISR.",
+                "Critical Requirements: Logistics hubs.",
+                "Critical Vulnerabilities: Exposed supply lines."
+            ]
+        },
+    }
+    return responses.get(step, {})
+
+# Dynamic Step Management
+st.title("COPP Processing Tool")
+
+# Initialize session state for steps and outputs
+if "steps" not in st.session_state:
+    st.session_state.steps = [
+        "Step 1: Review of Directives",
+        "Step 2: Situation Analysis & IPOE",
+        "Step 3: Enemy Course of Action (ECOA) Development",
+    ]
+
+if "outputs" not in st.session_state:
+    st.session_state.outputs = {}
+
+# Sidebar for adding/removing steps
+st.sidebar.header("Step Management")
+new_step = st.sidebar.text_input("Add a New Step (e.g., 'Step 4: Own COA Development')")
+if st.sidebar.button("Add Step"):
+    if new_step and new_step not in st.session_state.steps:
+        st.session_state.steps.append(new_step)
+        st.sidebar.success(f"Added: {new_step}")
+
+remove_step = st.sidebar.selectbox("Remove a Step", st.session_state.steps)
+if st.sidebar.button("Remove Step"):
+    st.session_state.steps.remove(remove_step)
+    st.sidebar.success(f"Removed: {remove_step}")
+
+# Step Selection
+st.header("COPP Steps")
+selected_step = st.selectbox("Select a COPP Step", st.session_state.steps)
+
+# Narrative Input
+st.subheader("Enter Directive or Narrative")
+directive_input = st.text_area("Provide the directive or narrative for analysis", height=150)
+
+# Process Button
+if st.button("Process"):
+    if directive_input.strip():
+        # Generate prompt and process
+        prompt = f"Process the following directive for {selected_step}. Directive: {directive_input}"
+        output = mock_gpt_api(prompt, selected_step.split(":")[0])
+        
+        # Save output to session state
+        st.session_state.outputs[selected_step] = output
+        
+        # Display output
+        st.subheader(f"Output for {selected_step}")
+        for key, details in output.items():
+            st.write(f"**{key}:**")
+            st.write("\n".join(details))
+        
+        # Provide option to chain input to the next step
+        if st.checkbox("Use this output as input for the next step"):
+            directive_input = "\n".join([f"{key}: {', '.join(details)}" for key, details in output.items()])
+    else:
+        st.error("Please provide a directive or narrative for analysis.")
+
+# Display Outputs
+st.sidebar.header("View Saved Outputs")
+if st.sidebar.button("Show All Outputs"):
+    st.subheader("All Outputs")
+    for step, output in st.session_state.outputs.items():
+        st.write(f"### {step}")
+        for key, details in output.items():
+            st.write(f"**{key}:**")
+            st.write("\n".join(details))
+
+# Export All Outputs
+if st.sidebar.button("Export All Outputs"):
+    export_data = "\n\n".join(
+        [f"{step}:\n" + "\n".join([f"{key}: {', '.join(details)}" for key, details in output.items()])
+         for step, output in st.session_state.outputs.items()]
+    )
+    st.download_button(label="Download All Outputs", data=export_data, file_name="COPP_All_Outputs.txt", mime="text/plain")
